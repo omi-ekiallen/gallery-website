@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local runtime data (sqlite db + client uploads)
+/data/
+/storage/

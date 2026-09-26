@@ -1,26 +1,112 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink: #0a0a0a;
+  --color-muted: #8a8a8a;
+  --color-soft: #f6f6f6;
+  --color-line: #e8e8e8;
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background: #ffffff;
+  color: #0a0a0a;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 300;
+  letter-spacing: -0.015em;
+}
+
+.label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: #8a8a8a;
+}
+
+/* Inputs are hairline-ruled, not boxed — keeps forms airy */
+.field {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #e8e8e8;
+  padding: 10px 0;
+  font-size: 15px;
+  font-weight: 300;
+  color: #0a0a0a;
+  outline: none;
+  transition: border-color 0.25s ease;
+}
+.field::placeholder {
+  color: #c4c4c4;
+}
+.field:focus {
+  border-bottom-color: #0a0a0a;
+}
+textarea.field {
+  resize: none;
+  line-height: 1.7;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 28px;
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  transition: all 0.25s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-solid {
+  background: #0a0a0a;
+  color: #ffffff;
+}
+.btn-solid:hover {
+  background: #333333;
+}
+.btn-ghost {
+  border: 1px solid #e8e8e8;
+  color: #0a0a0a;
+}
+.btn-ghost:hover {
+  border-color: #0a0a0a;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.link-underline {
+  border-bottom: 1px solid #d4d4d4;
+  padding-bottom: 1px;
+  transition: border-color 0.2s ease;
+}
+.link-underline:hover {
+  border-bottom-color: #0a0a0a;
+}
+
+::selection {
+  background: #0a0a0a;
+  color: #ffffff;
 }
