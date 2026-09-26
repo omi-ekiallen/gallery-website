@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import { projectRepo, mediaRepo, userRepo } from '@/lib/db';
 import { deleteFile } from '@/lib/storage';
+import { deleteDerivatives } from '@/lib/images';
 
 export async function DELETE(
   req: Request,
@@ -23,8 +24,9 @@ export async function DELETE(
     return NextResponse.json({ error: 'Media not found' }, { status: 404 });
   }
 
-  // Delete file from disk
+  // Delete file from disk, along with its cached preview renderings
   await deleteFile(mediaItem.filename);
+  await deleteDerivatives(mediaItem.filename);
 
   // Delete from DB
   mediaRepo.delete(mediaItem.id);

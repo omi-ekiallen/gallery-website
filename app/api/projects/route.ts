@@ -2,16 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { getSessionUser } from '@/lib/auth';
 import { projectRepo } from '@/lib/db';
-
-function slugify(text: string): string {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(/[^\w\-]+/g, '') // Remove non-word chars
-    .replace(/\-\-+/g, '-'); // Replace multiple - with single -
-}
+import { slugify, uniqueSlug } from '@/lib/slug';
 
 export async function GET() {
   const user = await getSessionUser();
@@ -20,7 +11,7 @@ export async function GET() {
   }
 
   const projects = projectRepo.listByUserId(user.id);
-  return NextResponse.json({ projects });
+  return NextResponse.json({ projects, studioHandle: user.handle });
 }
 
 export async function POST(req: Request) {
@@ -42,13 +33,8 @@ export async function POST(req: Request) {
       baseSlug = `project-${Date.now()}`;
     }
 
-    // Ensure unique slug
-    let slug = baseSlug;
-    let counter = 1;
-    while (projectRepo.findBySlug(slug)) {
-      slug = `${baseSlug}-${counter}`;
-      counter++;
-    }
+    // Slugs only need to be unique within this studio
+    const slug = uniqueSlug(baseSlug, (candidate) => projectRepo.slugTaken(user.id, candidate));
 
     const projectId = crypto.randomUUID();
     const project = projectRepo.create({

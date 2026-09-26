@@ -21,61 +21,84 @@ export default function OrdersPage() {
     completedOrders.length > 0 ? Math.round(totalRevenue / completedOrders.length) : 0;
 
   if (loading) {
-    return <p className="label">Loading</p>;
+    return <p className="label-caps text-ink-soft">Loading</p>;
   }
 
   return (
     <div>
-      <p className="label">Studio</p>
-      <h1 className="font-display text-3xl sm:text-4xl mt-6">Orders</h1>
+      <p className="label-caps text-ink-soft">Accounts</p>
+      <h1 className="headline-lg mt-2">Ledger</h1>
 
-      <div className="mt-20 grid grid-cols-1 sm:grid-cols-3 gap-y-12 gap-x-8 border-t border-line pt-12">
+      <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 border border-ink">
         {[
           { label: 'Collected', value: `₦${totalRevenue.toLocaleString()}` },
-          { label: 'Paid orders', value: completedOrders.length },
+          { label: 'Cleared orders', value: completedOrders.length },
           { label: 'Average order', value: `₦${avgOrderValue.toLocaleString()}` },
-        ].map((stat) => (
-          <div key={stat.label}>
-            <p className="label">{stat.label}</p>
-            <p className="font-display text-4xl mt-4">{stat.value}</p>
+        ].map((stat, i) => (
+          <div
+            key={stat.label}
+            className={`p-5 ${i > 0 ? 'border-t sm:border-t-0 sm:border-l border-rule' : ''}`}
+          >
+            <p className="label-caps text-ink-soft">{stat.label}</p>
+            <p className="ledger-lg mt-2">{stat.value}</p>
           </div>
         ))}
       </div>
 
       {orders.length === 0 ? (
-        <p className="mt-24 border-t border-line pt-24 text-[15px] text-muted max-w-md leading-relaxed">
-          No payments yet. When a client pays on one of your gallery links, the order shows up here
-          with its transaction reference.
-        </p>
+        <div className="mt-10 border border-ink p-10 md:p-16">
+          <p className="body-md text-ink-soft max-w-md">
+            No entries yet. When a client settles a gallery, the transaction is recorded here with
+            its reference and the moment the files were released.
+          </p>
+        </div>
       ) : (
-        <div className="mt-24 border-t border-line">
+        <div className="mt-10 border border-ink">
+          <div className="band px-5 py-3 hidden md:grid grid-cols-12 gap-4">
+            <span className="label-caps text-ink-soft col-span-3">Client</span>
+            <span className="label-caps text-ink-soft col-span-3">Gallery</span>
+            <span className="label-caps text-ink-soft col-span-3">Reference</span>
+            <span className="label-caps text-ink-soft col-span-1">Status</span>
+            <span className="label-caps text-ink-soft col-span-2 text-right">Amount</span>
+          </div>
+
           {orders.map((o) => (
             <div
               key={o.id}
-              className="border-b border-line py-8 flex flex-col sm:flex-row sm:items-center gap-6"
+              className="px-5 py-4 grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 md:items-center border-t border-rule"
             >
-              <div className="flex-1 min-w-0">
-                <p className="text-[15px]">{o.client_name || 'Client'}</p>
-                <p className="text-[13px] text-muted mt-1 truncate">{o.client_email}</p>
+              <div className="md:col-span-3 min-w-0">
+                <p className="body-md truncate">{o.client_name || 'Client'}</p>
+                <p className="body-sm text-ink-soft truncate">{o.client_email}</p>
               </div>
 
-              <div className="flex-1 min-w-0">
+              <div className="md:col-span-3 min-w-0">
                 <Link
                   href={`/dashboard/projects/${o.project_id}`}
-                  className="text-[15px] link-underline"
+                  className="body-md rule-link truncate inline-block max-w-full"
                 >
                   {o.project_title || 'Gallery'}
                 </Link>
-                <p className="text-[13px] text-muted mt-1 truncate">{o.paystack_reference}</p>
-              </div>
-
-              <div className="sm:text-right shrink-0">
-                <p className="font-display text-2xl">₦{o.amount_ngn.toLocaleString()}</p>
-                <p className="label mt-1">
-                  {o.status === 'success' ? 'Unlocked' : o.status} ·{' '}
+                <p className="body-sm text-ink-soft">
                   {new Date(o.created_at).toLocaleDateString()}
                 </p>
               </div>
+
+              <p className="md:col-span-3 body-sm text-ink-soft truncate">{o.paystack_reference}</p>
+
+              <div className="md:col-span-1">
+                <span
+                  className={`status label-caps ${
+                    o.status === 'success' ? 'status-paid' : 'status-processing'
+                  }`}
+                >
+                  {o.status === 'success' ? 'Paid' : 'Processing'}
+                </span>
+              </div>
+
+              <p className="md:col-span-2 ledger-md md:text-right">
+                ₦{o.amount_ngn.toLocaleString()}
+              </p>
             </div>
           ))}
         </div>

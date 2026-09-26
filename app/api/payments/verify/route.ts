@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     // Update or establish client gallery session
     const cookieStore = await cookies();
     let sessionToken = cookieStore.get(`gp_gallery_${project.id}`)?.value;
-    let session = sessionToken ? sessionRepo.find(sessionToken) : undefined;
+    const session = sessionToken ? sessionRepo.find(sessionToken) : undefined;
 
     if (!sessionToken || !session) {
       sessionToken = `gs_${crypto.randomBytes(24).toString('hex')}`;

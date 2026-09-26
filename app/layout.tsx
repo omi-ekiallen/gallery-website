@@ -1,18 +1,19 @@
 import type { Metadata } from 'next';
-import { Cormorant_Garamond, Jost } from 'next/font/google';
+import { Newsreader, Manrope } from 'next/font/google';
 import './globals.css';
+import MediaGuard from './media-guard';
 
-const display = Cormorant_Garamond({
-  variable: '--font-display',
+const newsreader = Newsreader({
+  variable: '--font-newsreader',
   subsets: ['latin'],
-  weight: ['300', '400'],
+  weight: ['400', '500'],
   display: 'swap',
 });
 
-const body = Jost({
-  variable: '--font-body',
+const manrope = Manrope({
+  variable: '--font-manrope',
   subsets: ['latin'],
-  weight: ['300', '400'],
+  weight: ['400', '500', '600'],
   display: 'swap',
 });
 
@@ -24,8 +25,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} h-full`}>
-      <body className="min-h-full bg-white text-ink">{children}</body>
+    <html lang="en" className={`${newsreader.variable} ${manrope.variable} h-full`}>
+      <body className="min-h-full bg-paper text-ink">
+        <MediaGuard />
+        {children}
+      </body>
     </html>
   );
 }

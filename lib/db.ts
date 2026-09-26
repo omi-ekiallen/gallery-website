@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import fs from 'node:fs';
 import { User, Project, MediaItem, Order, GallerySession } from './types';
+import { slugify, uniqueSlug, RESERVED_HANDLES } from './slug';
 
 let dbInstance: DatabaseSync | null = null;
 
@@ -30,6 +31,7 @@ export function getDb(): DatabaseSync {
       password_hash TEXT NOT NULL,
       name TEXT NOT NULL,
       business_name TEXT,
+      handle TEXT UNIQUE,
       tier TEXT NOT NULL DEFAULT 'free',
       storage_used INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
@@ -39,7 +41,7 @@ export function getDb(): DatabaseSync {
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
       title TEXT NOT NULL,
-      slug TEXT UNIQUE NOT NULL,
+      slug TEXT NOT NULL,
       description TEXT,
       cover_media_id TEXT,
       passcode TEXT,
@@ -86,8 +88,70 @@ export function getDb(): DatabaseSync {
     );
   `);
 
+  migrate(db);
+
   dbInstance = db;
   return db;
+}
+
+/**
+ * Schema changes applied to databases created by earlier versions. Each step is
+ * written so that running it twice is harmless.
+ */
+function migrate(db: DatabaseSync) {
+  const userColumns = db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
+  if (!userColumns.some((c) => c.name === 'handle')) {
+    db.exec('ALTER TABLE users ADD COLUMN handle TEXT');
+    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_handle ON users(handle)');
+  }
+
+  // Accounts created before handles existed get one from their studio name.
+  const unhandled = db
+    .prepare('SELECT id, name, business_name FROM users WHERE handle IS NULL OR handle = ?')
+    .all('') as { id: string; name: string; business_name: string }[];
+
+  for (const row of unhandled) {
+    const taken = (candidate: string) =>
+      RESERVED_HANDLES.has(candidate) ||
+      !!db.prepare('SELECT id FROM users WHERE LOWER(handle) = LOWER(?)').get(candidate);
+
+    const handle = uniqueSlug(slugify(row.business_name || row.name) || 'studio', taken);
+    db.prepare('UPDATE users SET handle = ? WHERE id = ?').run(handle, row.id);
+  }
+
+  // Gallery slugs used to be unique across the whole platform. Now that a link
+  // reads /<studio>/gallery/<slug>, they only need to be unique per studio.
+  const projectsSql = (
+    db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='projects'").get() as
+      | { sql: string }
+      | undefined
+  )?.sql;
+
+  if (projectsSql && projectsSql.includes('slug TEXT UNIQUE NOT NULL')) {
+    db.exec('PRAGMA foreign_keys = OFF;');
+    db.exec(`
+      CREATE TABLE projects_migrated (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        slug TEXT NOT NULL,
+        description TEXT,
+        cover_media_id TEXT,
+        passcode TEXT,
+        price_ngn INTEGER NOT NULL DEFAULT 0,
+        is_paywall_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+      INSERT INTO projects_migrated SELECT id, user_id, title, slug, description, cover_media_id, passcode, price_ngn, is_paywall_active, created_at FROM projects;
+      DROP TABLE projects;
+      ALTER TABLE projects_migrated RENAME TO projects;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_user_slug ON projects(user_id, slug);
+    `);
+    db.exec('PRAGMA foreign_keys = ON;');
+  } else {
+    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_user_slug ON projects(user_id, slug)');
+  }
 }
 
 // User repository helpers
@@ -104,6 +168,26 @@ export const userRepo = {
     return row as User | undefined;
   },
 
+  findByHandle(handle: string): User | undefined {
+    const db = getDb();
+    return db
+      .prepare('SELECT * FROM users WHERE LOWER(handle) = LOWER(?)')
+      .get(handle) as User | undefined;
+  },
+
+  handleTaken(handle: string, exceptUserId?: string): boolean {
+    const db = getDb();
+    const row = db
+      .prepare('SELECT id FROM users WHERE LOWER(handle) = LOWER(?)')
+      .get(handle) as { id: string } | undefined;
+    return !!row && row.id !== exceptUserId;
+  },
+
+  updateHandle(userId: string, handle: string) {
+    const db = getDb();
+    db.prepare('UPDATE users SET handle = ? WHERE id = ?').run(handle, userId);
+  },
+
   create(user: Omit<User, 'storage_used' | 'created_at'>): User {
     const db = getDb();
     const now = new Date().toISOString();
@@ -113,14 +197,15 @@ export const userRepo = {
       created_at: now,
     };
     db.prepare(`
-      INSERT INTO users (id, email, password_hash, name, business_name, tier, storage_used, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, email, password_hash, name, business_name, handle, tier, storage_used, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       fullUser.id,
       fullUser.email,
       fullUser.password_hash,
       fullUser.name,
       fullUser.business_name || '',
+      fullUser.handle,
       fullUser.tier,
       fullUser.storage_used,
       fullUser.created_at
@@ -160,9 +245,24 @@ export const projectRepo = {
     return db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Project | undefined;
   },
 
-  findBySlug(slug: string): Project | undefined {
+  /** Resolves a public gallery link: /<studio handle>/gallery/<slug>. */
+  findByHandleAndSlug(handle: string, slug: string): Project | undefined {
     const db = getDb();
-    return db.prepare('SELECT * FROM projects WHERE LOWER(slug) = LOWER(?)').get(slug) as Project | undefined;
+    return db
+      .prepare(
+        `SELECT p.* FROM projects p
+         JOIN users u ON u.id = p.user_id
+         WHERE LOWER(u.handle) = LOWER(?) AND LOWER(p.slug) = LOWER(?)`
+      )
+      .get(handle, slug) as Project | undefined;
+  },
+
+  slugTaken(userId: string, slug: string, exceptProjectId?: string): boolean {
+    const db = getDb();
+    const row = db
+      .prepare('SELECT id FROM projects WHERE user_id = ? AND LOWER(slug) = LOWER(?)')
+      .get(userId, slug) as { id: string } | undefined;
+    return !!row && row.id !== exceptProjectId;
   },
 
   listByUserId(userId: string): (Project & { media_count: number; total_size: number; cover_filename: string | null })[] {
@@ -370,3 +470,19 @@ export const sessionRepo = {
     db.prepare('DELETE FROM gallery_sessions WHERE token = ?').run(token);
   },
 };
+
+/** Resolves an old /gallery/<slug> link to its studio, for redirects. */
+export function findLegacyGalleryBySlug(
+  slug: string
+): { handle: string; slug: string } | undefined {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT u.handle as handle, p.slug as slug
+       FROM projects p JOIN users u ON u.id = p.user_id
+       WHERE LOWER(p.slug) = LOWER(?)
+       ORDER BY p.created_at ASC
+       LIMIT 1`
+    )
+    .get(slug) as { handle: string; slug: string } | undefined;
+}

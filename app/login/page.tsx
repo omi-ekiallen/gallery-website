@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import PasswordField from '../password-field';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,22 +37,24 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-line">
-        <div className="max-w-6xl mx-auto px-6 sm:px-10 h-20 flex items-center">
-          <Link href="/" className="font-display text-2xl">
+      <header className="border-b border-ink">
+        <div className="max-w-[1200px] mx-auto px-4 md:px-8 lg:px-12 h-16 flex items-center">
+          <Link href="/" className="headline-sm">
             PayGallery
           </Link>
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-6 py-24 sm:py-32">
-        <div className="w-full max-w-sm">
-          <p className="label">Studio</p>
-          <h1 className="font-display text-4xl mt-6">Sign in</h1>
+      <main className="flex-1 flex items-start justify-center px-4 py-16 md:py-24">
+        <div className="w-full max-w-md border border-ink bg-paper">
+          <div className="band px-6 py-5">
+            <p className="label-caps text-ink-soft">Studio access</p>
+            <h1 className="headline-lg mt-2">Sign in</h1>
+          </div>
 
-          <form onSubmit={handleSubmit} className="mt-14 space-y-10">
+          <form onSubmit={handleSubmit} className="p-6 space-y-5">
             <div>
-              <label className="label block mb-3">Email</label>
+              <label className="label-caps text-ink-soft block mb-2">Email</label>
               <input
                 type="email"
                 required
@@ -63,32 +66,29 @@ export default function LoginPage() {
               />
             </div>
 
-            <div>
-              <label className="label block mb-3">Password</label>
-              <input
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="field"
-              />
-            </div>
+            <PasswordField
+              label="Password"
+              value={password}
+              onChange={setPassword}
+              placeholder="••••••••"
+              autoComplete="current-password"
+            />
 
-            {error && <p className="text-[13px] text-ink border-l border-ink pl-4">{error}</p>}
+            {error && (
+              <p className="body-md text-clay border border-clay px-3 py-2">{error}</p>
+            )}
 
-            <button type="submit" disabled={loading} className="btn btn-solid w-full">
+            <button type="submit" disabled={loading} className="btn btn-primary w-full">
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
-          </form>
 
-          <p className="mt-16 text-[13px] text-muted">
-            No account yet?{' '}
-            <Link href="/register" className="link-underline text-ink">
-              Create one
-            </Link>
-          </p>
+            <p className="body-md text-ink-soft pt-2 border-t border-rule">
+              No account yet?{' '}
+              <Link href="/register" className="text-ink rule-link">
+                Create one
+              </Link>
+            </p>
+          </form>
         </div>
       </main>
     </div>

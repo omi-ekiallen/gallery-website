@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { userRepo } from '@/lib/db';
 import { hashPassword, createAuthCookieValue } from '@/lib/auth';
+import { slugify, uniqueSlug, RESERVED_HANDLES } from '@/lib/slug';
 
 export async function POST(req: Request) {
   try {
@@ -20,12 +21,20 @@ export async function POST(req: Request) {
     const password_hash = await hashPassword(password);
     const userId = crypto.randomUUID();
 
+    // The studio handle is the first segment of every gallery link, so it has
+    // to be unique and must not collide with the app's own pages.
+    const handleBase = slugify(business_name || name) || 'studio';
+    const handle = uniqueSlug(handleBase, (candidate) =>
+      RESERVED_HANDLES.has(candidate) || userRepo.handleTaken(candidate)
+    );
+
     const newUser = userRepo.create({
       id: userId,
       email,
       password_hash,
       name,
       business_name: business_name || name + ' Photography',
+      handle,
       tier: tier && ['free', 'tier_2', 'tier_3'].includes(tier) ? tier : 'free',
     });
 
@@ -37,6 +46,7 @@ export async function POST(req: Request) {
         email: newUser.email,
         name: newUser.name,
         business_name: newUser.business_name,
+        handle: newUser.handle,
         tier: newUser.tier,
         storage_used: newUser.storage_used,
       },

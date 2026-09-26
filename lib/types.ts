@@ -65,6 +65,8 @@ export interface User {
   password_hash: string;
   name: string;
   business_name: string;
+  /** URL segment for this studio: /<handle>/gallery/<slug>. */
+  handle: string;
   tier: SubscriptionTier;
   storage_used: number;
   created_at: string;

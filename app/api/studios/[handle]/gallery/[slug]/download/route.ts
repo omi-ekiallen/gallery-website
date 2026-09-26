@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import fs from 'node:fs';
 import { Readable } from 'node:stream';
 import { ZipArchive } from 'archiver';
-import { projectRepo, mediaRepo, sessionRepo, orderRepo } from '@/lib/db';
+import { projectRepo, mediaRepo } from '@/lib/db';
+import { resolveGalleryAccess } from '@/lib/access';
 import { getFilePath } from '@/lib/storage';
 
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ handle: string; slug: string }> }
 ) {
-  const { slug } = await params;
-  const project = projectRepo.findBySlug(slug);
+  const { handle, slug } = await params;
+  const project = projectRepo.findByHandleAndSlug(handle, slug);
 
   if (!project) {
     return NextResponse.json({ error: 'Gallery not found' }, { status: 404 });
@@ -25,26 +25,20 @@ export async function GET(
     return NextResponse.json({ error: 'Please specify a mediaId or all=true' }, { status: 400 });
   }
 
-  // Check Paywall authorization
-  const isFree = project.price_ngn === 0 || project.is_paywall_active === 0;
+  // Both gates apply: the passcode, then the paywall.
+  const access = await resolveGalleryAccess(project);
 
-  if (!isFree) {
-    const cookieStore = await cookies();
-    const sessionToken = cookieStore.get(`gp_gallery_${project.id}`)?.value;
-    const session = sessionToken ? sessionRepo.find(sessionToken) : undefined;
-
-    const isUnlockedBySession = !!(session && session.unlocked_downloads === 1);
-    const isUnlockedByOrder = session?.client_email ? orderRepo.hasCompletedOrder(project.id, session.client_email) : false;
-
-    if (!isUnlockedBySession && !isUnlockedByOrder) {
-      return NextResponse.json(
-        {
-          error: 'Payment required! Please complete the gallery checkout before downloading full-resolution files.',
-          priceNgn: project.price_ngn,
-        },
-        { status: 403 }
-      );
-    }
+  if (!access.canDownload) {
+    return NextResponse.json(
+      {
+        error:
+          access.level === 'passcode'
+            ? 'Enter the gallery passcode before downloading.'
+            : 'Payment required. Complete the checkout to unlock full-resolution files.',
+        priceNgn: project.price_ngn,
+      },
+      { status: 403 }
+    );
   }
 
   // --- Single File Download ---

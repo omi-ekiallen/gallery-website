@@ -8,8 +8,8 @@ import { TIERS } from '@/lib/types';
 
 const navItems = [
   { name: 'Galleries', href: '/dashboard' },
-  { name: 'Orders', href: '/dashboard/orders' },
-  { name: 'Plan', href: '/dashboard/billing' },
+  { name: 'Ledger', href: '/dashboard/orders' },
+  { name: 'Capacity', href: '/dashboard/billing' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -49,7 +49,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="label">Loading</p>
+        <p className="label-caps text-ink-soft">Loading</p>
       </div>
     );
   }
@@ -60,49 +60,44 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-line">
-        <div className="max-w-6xl mx-auto px-6 sm:px-10 h-20 flex items-center justify-between gap-8">
-          <Link href="/dashboard" className="font-display text-2xl shrink-0">
+      <header className="border-b border-ink">
+        <div className="max-w-[1200px] mx-auto px-4 md:px-8 lg:px-12 h-16 flex items-center justify-between gap-6">
+          <Link href="/dashboard" className="headline-sm shrink-0">
             PayGallery
           </Link>
 
-          <nav className="hidden sm:flex items-center gap-10 text-[13px]">
+          <nav className="hidden sm:flex items-center gap-6">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={pathname === item.href ? 'link-underline !border-ink' : 'text-muted hover:text-ink transition'}
+                className={`label-ui ${
+                  pathname === item.href ? 'rule-link !border-ink' : 'text-ink-soft hover:text-ink'
+                }`}
               >
                 {item.name}
               </Link>
             ))}
           </nav>
 
-          <div className="flex items-center gap-8 shrink-0">
-            <Link href="/dashboard/billing" className="hidden md:block text-right group">
-              <span className="label block">
-                {formatBytes(storageUsed)} of {tierConfig.storageLabel}
-              </span>
-              <span className="block w-32 h-px bg-line mt-2 relative">
-                <span
-                  className="absolute left-0 top-0 h-px bg-ink"
-                  style={{ width: `${Math.max(2, storagePercent)}%` }}
-                />
-              </span>
-            </Link>
-
-            <button onClick={handleLogout} className="text-[13px] text-muted hover:text-ink transition">
+          <div className="flex items-center gap-6 shrink-0">
+            <span className="hidden md:block label-ui text-ink-soft truncate max-w-[180px]">
+              {user?.business_name || user?.name}
+            </span>
+            <button onClick={handleLogout} className="label-ui text-ink-soft hover:text-ink">
               Sign out
             </button>
           </div>
         </div>
 
-        <nav className="sm:hidden flex items-center gap-8 px-6 pb-5 text-[13px]">
+        <nav className="sm:hidden flex items-center gap-6 px-4 pb-4">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={pathname === item.href ? 'link-underline !border-ink' : 'text-muted'}
+              className={`label-ui ${
+                pathname === item.href ? 'rule-link !border-ink' : 'text-ink-soft'
+              }`}
             >
               {item.name}
             </Link>
@@ -110,7 +105,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
       </header>
 
-      <main className="flex-1 max-w-6xl w-full mx-auto px-6 sm:px-10 py-16 sm:py-24">{children}</main>
+      {/* Statement band: capacity ledger, always in view */}
+      <div className="band">
+        <div className="max-w-[1200px] mx-auto px-4 md:px-8 lg:px-12 py-7 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+          <div>
+            <p className="label-caps text-ink-soft">Archival capacity</p>
+            <p className="ledger-lg mt-2">
+              {formatBytes(storageUsed)}
+              <span className="body-lg text-ink-soft"> of {tierConfig.storageLabel}</span>
+            </p>
+          </div>
+
+          <div className="w-full sm:w-72">
+            <div className="meter">
+              <span style={{ width: `${Math.max(1, storagePercent)}%` }} />
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <span className="label-ui text-ink-soft">{tierConfig.name}</span>
+              <Link href="/dashboard/billing" className="label-ui rule-link">
+                Adjust plan
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <main className="flex-1 max-w-[1200px] w-full mx-auto px-4 md:px-8 lg:px-12 py-10 md:py-12">
+        {children}
+      </main>
     </div>
   );
 }

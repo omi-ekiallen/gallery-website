@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
+import { slugify } from '@/lib/slug';
 import { projectRepo, mediaRepo, userRepo } from '@/lib/db';
 import { deleteFile } from '@/lib/storage';
 
@@ -24,6 +25,7 @@ export async function GET(
   return NextResponse.json({
     project,
     media,
+    studioHandle: user.handle,
   });
 }
 
@@ -55,11 +57,18 @@ export async function PATCH(
     if (body.is_paywall_active !== undefined) updates.is_paywall_active = body.is_paywall_active ? 1 : 0;
 
     if (body.slug !== undefined && body.slug.trim()) {
-      const cleanSlug = body.slug.trim().toLowerCase().replace(/[^\w\-]+/g, '');
+      const cleanSlug = slugify(body.slug);
+      if (!cleanSlug) {
+        return NextResponse.json({ error: 'That gallery link is not valid' }, { status: 400 });
+      }
       if (cleanSlug !== project.slug) {
-        const existing = projectRepo.findBySlug(cleanSlug);
-        if (existing && existing.id !== project.id) {
-          return NextResponse.json({ error: 'This custom URL slug is already taken' }, { status: 409 });
+        // Only has to be unique inside this studio now that the studio handle
+        // is part of the public link.
+        if (projectRepo.slugTaken(user.id, cleanSlug, project.id)) {
+          return NextResponse.json(
+            { error: 'You already have a gallery at that link' },
+            { status: 409 }
+          );
         }
         updates.slug = cleanSlug;
       }

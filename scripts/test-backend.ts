@@ -16,6 +16,7 @@ async function runTests() {
     password_hash: hashed,
     name: 'Test Creative',
     business_name: 'Test Studios',
+    handle: `test-studio-${Date.now()}`,
     tier: 'free',
   });
 

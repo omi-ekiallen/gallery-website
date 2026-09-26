@@ -16,6 +16,7 @@ export async function GET() {
       email: user.email,
       name: user.name,
       business_name: user.business_name,
+      handle: user.handle,
       tier: user.tier,
       storage_used: user.storage_used,
       tierConfig,

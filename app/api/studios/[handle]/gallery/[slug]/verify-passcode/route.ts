@@ -4,10 +4,10 @@ import { projectRepo, sessionRepo } from '@/lib/db';
 
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ handle: string; slug: string }> }
 ) {
-  const { slug } = await params;
-  const project = projectRepo.findBySlug(slug);
+  const { handle, slug } = await params;
+  const project = projectRepo.findByHandleAndSlug(handle, slug);
 
   if (!project) {
     return NextResponse.json({ error: 'Gallery not found' }, { status: 404 });

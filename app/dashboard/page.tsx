@@ -9,6 +9,7 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+  const [studioHandle, setStudioHandle] = useState('');
 
   const [showModal, setShowModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -22,7 +23,11 @@ export default function DashboardPage() {
   const fetchData = async () => {
     try {
       const [projRes, orderRes] = await Promise.all([fetch('/api/projects'), fetch('/api/orders')]);
-      if (projRes.ok) setProjects((await projRes.json()).projects || []);
+      if (projRes.ok) {
+        const projData = await projRes.json();
+        setProjects(projData.projects || []);
+        setStudioHandle(projData.studioHandle || '');
+      }
       if (orderRes.ok) setOrders((await orderRes.json()).orders || []);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
@@ -36,7 +41,7 @@ export default function DashboardPage() {
   }, []);
 
   const copyLink = (slug: string) => {
-    navigator.clipboard.writeText(`${window.location.origin}/gallery/${slug}`);
+    navigator.clipboard.writeText(`${window.location.origin}/${studioHandle}/gallery/${slug}`);
     setCopiedSlug(slug);
     setTimeout(() => setCopiedSlug(null), 2500);
   };
@@ -81,55 +86,62 @@ export default function DashboardPage() {
   const totalMedia = projects.reduce((acc, p) => acc + (p.media_count || 0), 0);
 
   if (loading) {
-    return <p className="label">Loading</p>;
+    return <p className="label-caps text-ink-soft">Loading</p>;
   }
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div>
-          <p className="label">Studio</p>
-          <h1 className="font-display text-3xl sm:text-4xl mt-6">Galleries</h1>
+          <p className="label-caps text-ink-soft">Client work</p>
+          <h1 className="headline-lg mt-2">Galleries</h1>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn btn-solid self-start">
+        <button onClick={() => setShowModal(true)} className="btn btn-primary self-start">
           New gallery
         </button>
       </div>
 
-      <div className="mt-20 grid grid-cols-2 lg:grid-cols-4 gap-y-12 gap-x-8 border-t border-line pt-12">
+      <div className="mt-10 grid grid-cols-2 lg:grid-cols-4 border border-ink">
         {[
-          { label: 'Galleries', value: projects.length },
-          { label: 'Files stored', value: totalMedia },
-          { label: 'Paid orders', value: paidOrders.length },
+          { label: 'Open galleries', value: projects.length },
+          { label: 'Frames archived', value: totalMedia },
+          { label: 'Cleared orders', value: paidOrders.length },
           { label: 'Collected', value: `₦${totalRevenue.toLocaleString()}` },
-        ].map((stat) => (
-          <div key={stat.label}>
-            <p className="label">{stat.label}</p>
-            <p className="font-display text-4xl mt-4">{stat.value}</p>
+        ].map((stat, i) => (
+          <div
+            key={stat.label}
+            className={`p-5 ${i % 2 === 1 ? 'border-l border-rule' : ''} ${
+              i > 1 ? 'border-t border-rule lg:border-t-0' : ''
+            } ${i === 2 ? 'lg:border-l' : ''}`}
+          >
+            <p className="label-caps text-ink-soft">{stat.label}</p>
+            <p className="ledger-lg mt-2">{stat.value}</p>
           </div>
         ))}
       </div>
 
       {projects.length === 0 ? (
-        <div className="mt-24 border-t border-line pt-24 text-center">
-          <h2 className="font-display text-3xl">No galleries yet</h2>
-          <p className="mt-5 text-[15px] text-muted max-w-sm mx-auto leading-relaxed">
+        <div className="mt-10 border border-ink p-10 md:p-16 text-center">
+          <h2 className="headline-md">No galleries on file</h2>
+          <p className="body-md mt-3 text-ink-soft max-w-sm mx-auto">
             Create a gallery, upload the shoot, then send your client the private link.
           </p>
-          <button onClick={() => setShowModal(true)} className="btn btn-ghost mt-12">
+          <button onClick={() => setShowModal(true)} className="btn btn-outline mt-8">
             Create your first gallery
           </button>
         </div>
       ) : (
-        <div className="mt-24 space-y-px bg-line border-y border-line">
-          {projects.map((proj) => (
+        <div className="mt-10 border border-ink">
+          {projects.map((proj, i) => (
             <div
               key={proj.id}
-              className="bg-white py-10 flex flex-col md:flex-row md:items-center gap-8"
+              className={`flex flex-col md:flex-row md:items-stretch ${
+                i > 0 ? 'border-t border-ink' : ''
+              }`}
             >
               <Link
                 href={`/dashboard/projects/${proj.id}`}
-                className="w-full md:w-40 h-40 md:h-28 bg-soft shrink-0 overflow-hidden"
+                className="w-full md:w-44 h-44 md:h-auto shrink-0 bg-band border-b md:border-b-0 md:border-r border-rule overflow-hidden"
               >
                 {proj.cover_filename ? (
                   <img
@@ -138,41 +150,56 @@ export default function DashboardPage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="w-full h-full flex items-center justify-center label">
-                    No media
+                  <span className="w-full h-full flex items-center justify-center label-caps text-ink-soft">
+                    No frames
                   </span>
                 )}
               </Link>
 
-              <div className="flex-1 min-w-0">
-                <Link href={`/dashboard/projects/${proj.id}`}>
-                  <h2 className="font-display text-3xl truncate">{proj.title}</h2>
-                </Link>
-                <p className="mt-2 text-[13px] text-muted truncate">/gallery/{proj.slug}</p>
-                <p className="mt-4 text-[13px] text-muted">
-                  {proj.media_count || 0} files · {formatBytes(proj.total_size || 0)} ·{' '}
-                  {proj.passcode ? 'Passcode set' : 'Open link'} ·{' '}
-                  {proj.price_ngn > 0 ? `₦${proj.price_ngn.toLocaleString()}` : 'Free download'}
-                </p>
-              </div>
+              <div className="flex-1 min-w-0 p-5 flex flex-col sm:flex-row sm:items-center gap-5">
+                <div className="flex-1 min-w-0">
+                  <Link href={`/dashboard/projects/${proj.id}`}>
+                    <h2 className="headline-md truncate">{proj.title}</h2>
+                  </Link>
+                  <p className="body-sm text-ink-soft mt-1 truncate">
+                    /{studioHandle}/gallery/{proj.slug}
+                  </p>
 
-              <div className="flex items-center gap-8 text-[13px] shrink-0">
-                <button
-                  onClick={() => copyLink(proj.slug)}
-                  className="text-muted hover:text-ink transition"
-                >
-                  {copiedSlug === proj.slug ? 'Copied' : 'Copy link'}
-                </button>
-                <Link
-                  href={`/gallery/${proj.slug}`}
-                  target="_blank"
-                  className="text-muted hover:text-ink transition"
-                >
-                  Preview
-                </Link>
-                <Link href={`/dashboard/projects/${proj.id}`} className="link-underline">
-                  Manage
-                </Link>
+                  <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+                    <span
+                      className={`status label-caps ${
+                        proj.price_ngn > 0 ? 'status-processing' : 'status-paid'
+                      }`}
+                    >
+                      {proj.price_ngn > 0 ? `₦${proj.price_ngn.toLocaleString()}` : 'Free download'}
+                    </span>
+                    <span className="label-caps text-ink-soft">
+                      {proj.passcode ? 'Passcode set' : 'Open link'}
+                    </span>
+                    <span className="label-caps text-ink-soft">
+                      {proj.media_count || 0} frames · {formatBytes(proj.total_size || 0)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-5 shrink-0">
+                  <button
+                    onClick={() => copyLink(proj.slug)}
+                    className="label-ui text-ink-soft hover:text-ink"
+                  >
+                    {copiedSlug === proj.slug ? 'Copied' : 'Copy link'}
+                  </button>
+                  <Link
+                    href={`/${studioHandle}/gallery/${proj.slug}`}
+                    target="_blank"
+                    className="label-ui text-ink-soft hover:text-ink"
+                  >
+                    Client view
+                  </Link>
+                  <Link href={`/dashboard/projects/${proj.id}`} className="btn btn-outline">
+                    Manage
+                  </Link>
+                </div>
               </div>
             </div>
           ))}
@@ -180,24 +207,24 @@ export default function DashboardPage() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <div className="max-w-xl mx-auto px-6 py-20">
-            <div className="flex items-start justify-between gap-8">
+        <div className="fixed inset-0 z-50 scrim overflow-y-auto p-4 md:p-10">
+          <div className="max-w-xl mx-auto bg-paper border border-ink">
+            <div className="band px-6 py-5 flex items-start justify-between gap-6">
               <div>
-                <p className="label">New</p>
-                <h2 className="font-display text-4xl mt-5">Create a gallery</h2>
+                <p className="label-caps text-ink-soft">New entry</p>
+                <h2 className="headline-lg mt-2">Create a gallery</h2>
               </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-[13px] text-muted hover:text-ink transition mt-2"
+                className="label-ui text-ink-soft hover:text-ink"
               >
                 Close
               </button>
             </div>
 
-            <form onSubmit={handleCreateProject} className="mt-14 space-y-10">
+            <form onSubmit={handleCreateProject} className="p-6 space-y-5">
               <div>
-                <label className="label block mb-3">Gallery title</label>
+                <label className="label-caps text-ink-soft block mb-2">Gallery title</label>
                 <input
                   type="text"
                   required
@@ -209,9 +236,11 @@ export default function DashboardPage() {
               </div>
 
               <div>
-                <label className="label block mb-3">Link (optional)</label>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-[13px] text-muted">/gallery/</span>
+                <label className="label-caps text-ink-soft block mb-2">Link</label>
+                <div className="flex items-stretch">
+                  <span className="label-ui text-ink-soft border border-r-0 border-ink-line px-3 flex items-center bg-band whitespace-nowrap">
+                    /{studioHandle || 'studio'}/gallery/
+                  </span>
                   <input
                     type="text"
                     value={newSlug}
@@ -222,9 +251,9 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="label block mb-3">Passcode (optional)</label>
+                  <label className="label-caps text-ink-soft block mb-2">Passcode</label>
                   <input
                     type="text"
                     value={newPasscode}
@@ -234,7 +263,7 @@ export default function DashboardPage() {
                   />
                 </div>
                 <div>
-                  <label className="label block mb-3">Download price (₦)</label>
+                  <label className="label-caps text-ink-soft block mb-2">Download fee (₦)</label>
                   <input
                     type="number"
                     min="0"
@@ -248,28 +277,33 @@ export default function DashboardPage() {
               </div>
 
               <div>
-                <label className="label block mb-3">Note to your client (optional)</label>
+                <label className="label-caps text-ink-soft block mb-2">Note to client</label>
                 <textarea
                   rows={3}
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="A short message shown above the photos"
+                  placeholder="A short message shown above the frames"
                   className="field"
                 />
               </div>
 
+              <p className="body-sm text-ink-soft border-t border-rule pt-4">
+                While a gallery is locked by passcode or awaiting payment, clients only ever see
+                blurred frames — the readable files stay on your server.
+              </p>
+
               {createError && (
-                <p className="text-[13px] text-ink border-l border-ink pl-4">{createError}</p>
+                <p className="body-md text-clay border border-clay px-3 py-2">{createError}</p>
               )}
 
-              <div className="flex items-center gap-6 pt-4">
-                <button type="submit" disabled={creating} className="btn btn-solid">
+              <div className="flex items-center gap-3 pt-1">
+                <button type="submit" disabled={creating} className="btn btn-primary">
                   {creating ? 'Creating…' : 'Create gallery'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="text-[13px] text-muted hover:text-ink transition"
+                  className="btn btn-outline"
                 >
                   Cancel
                 </button>
